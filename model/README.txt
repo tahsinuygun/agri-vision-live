@@ -1,0 +1,1 @@
+Bu klasöre web modeli "model.onnx" adıyla yerleştirilir. Beklenen giriş: 640 x 640. Sınıflar: 0 = Full Ripe, 1 = Unripe.\n
