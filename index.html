@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1712" />
+  <meta name="description" content="Tarımsal bilgisayarlı görü için canlı kamera tabanlı etkileşimli uygulama." />
+  <title>AgriVision Live | Tarımsal Bilgisayarlı Görü</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #07100c;
+  --surface: #0e1c16;
+  --surface-2: #13251d;
+  --line: rgba(255,255,255,.09);
+  --text: #f5faf7;
+  --muted: #a9b7af;
+  --accent: #80e8ad;
+  --ripe: #ff5b62;
+  --unripe: #78e08f;
+  --total: #80bfff;
+  --shadow: 0 18px 60px rgba(0,0,0,.32);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(67, 181, 120, .16), transparent 32rem),
+    radial-gradient(circle at 0% 50%, rgba(40, 107, 78, .10), transparent 28rem),
+    var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+.app-shell {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark {
+  width: 46px; height: 46px; flex: 0 0 46px;
+  display: grid; place-items: center;
+  border: 1px solid rgba(128,232,173,.34);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(128,232,173,.18), rgba(128,232,173,.05));
+  color: var(--accent); font-weight: 800; letter-spacing: -.03em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.eyebrow { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: .12em; }
+h1 { margin: 0; font-size: clamp(20px, 5vw, 28px); line-height: 1; letter-spacing: -.035em; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  flex: 0 0 auto;
+  padding: 8px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.035);
+  color: var(--muted); font-size: 11px; font-weight: 650;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #f5c451; box-shadow: 0 0 0 4px rgba(245,196,81,.10); }
+.status-pill.is-ready .status-dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(128,232,173,.10); }
+.status-pill.is-error .status-dot { background: #ff747b; box-shadow: 0 0 0 4px rgba(255,116,123,.10); }
+
+.hero-card, .how-card {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.camera-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 62vh;
+  background:
+    linear-gradient(rgba(128,232,173,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128,232,173,.035) 1px, transparent 1px),
+    #030806;
+  background-size: 32px 32px;
+  overflow: hidden;
+}
+
+#camera, #overlay {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+#camera { background: #000; }
+#overlay { pointer-events: none; }
+
+.camera-placeholder {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center; align-content: center;
+  gap: 8px; padding: 28px; text-align: center;
+  background: radial-gradient(circle at center, rgba(17,48,34,.52), rgba(3,8,6,.88));
+}
+.camera-placeholder[hidden] { display: none; }
+.camera-icon { font-size: 50px; line-height: 1; color: var(--accent); opacity: .9; }
+.camera-placeholder h2 { margin: 4px 0 0; font-size: 20px; }
+.camera-placeholder p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+
+.primary-btn {
+  border: 0; border-radius: 14px; padding: 13px 20px;
+  background: var(--accent); color: #062012;
+  font-weight: 800; cursor: pointer;
+  box-shadow: 0 10px 30px rgba(128,232,173,.18);
+}
+.primary-btn:active { transform: translateY(1px); }
+
+.live-badge, .fps-badge {
+  position: absolute; top: 12px; z-index: 4;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(3,8,6,.68); backdrop-filter: blur(8px);
+  border-radius: 999px; padding: 6px 9px;
+  font-size: 10px; font-weight: 800; letter-spacing: .06em;
+}
+.live-badge { left: 12px; display: flex; align-items: center; gap: 6px; }
+.live-badge span { width: 7px; height: 7px; background: #ff525a; border-radius: 50%; box-shadow: 0 0 0 4px rgba(255,82,90,.12); }
+.fps-badge { right: 12px; color: var(--muted); }
+.fps-badge strong { color: var(--text); }
+
+.count-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+}
+.count-card {
+  min-width: 0; padding: 12px;
+  border: 1px solid var(--line); border-radius: 15px;
+  background: rgba(255,255,255,.025);
+}
+.count-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.class-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
+.ripe .class-dot { background: var(--ripe); }
+.unripe .class-dot { background: var(--unripe); }
+.total .class-dot { background: var(--total); }
+.count-card strong { display: block; margin-top: 5px; font-size: clamp(24px, 8vw, 34px); line-height: 1; letter-spacing: -.04em; }
+
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 14px; }
+.control-btn {
+  min-height: 46px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface-2); color: var(--text); font-weight: 700; font-size: 13px;
+  cursor: pointer;
+}
+.control-btn:disabled { opacity: .42; cursor: not-allowed; }
+.control-btn:not(:disabled):active { transform: translateY(1px); }
+.control-icon { display: inline-block; margin-right: 6px; color: var(--accent); }
+
+.threshold-panel { margin: 0 14px 14px; padding: 13px 14px 10px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.02); }
+.threshold-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.threshold-head label { font-size: 12px; font-weight: 700; }
+.threshold-head output { color: var(--accent); font-size: 12px; font-weight: 800; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.threshold-scale { display: flex; justify-content: space-between; color: #718078; font-size: 9px; margin-top: 2px; }
+
+.message-box { margin: 0 14px 14px; padding: 12px 13px; border-radius: 13px; border: 1px solid rgba(255,116,123,.25); background: rgba(255,116,123,.07); color: #ffd4d6; font-size: 12px; line-height: 1.45; }
+
+.how-card {
+  margin-top: 12px; padding: 14px 16px;
+  display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 8px;
+  box-shadow: none;
+}
+.step { display: flex; align-items: center; gap: 7px; }
+.step span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: rgba(128,232,173,.11); color: var(--accent); font-size: 10px; font-weight: 800; }
+.step p { margin: 0; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.step-line { height: 1px; background: var(--line); }
+
+footer {
+  padding: 18px 8px 4px;
+  color: #75827b; text-align: center; font-size: 10px; line-height: 1.6;
+}
+
+@media (max-width: 520px) {
+  .app-shell { padding-left: 10px; padding-right: 10px; }
+  .topbar { align-items: flex-start; }
+  .status-pill { padding: 7px 8px; font-size: 9px; }
+  .count-grid { gap: 7px; padding: 10px; }
+  .count-card { padding: 10px 8px; }
+  .count-label { font-size: 9px; }
+  .controls { padding: 0 10px 10px; gap: 7px; }
+  .control-btn { font-size: 11px; }
+  .threshold-panel { margin: 0 10px 10px; }
+  .how-card { grid-template-columns: 1fr; gap: 7px; }
+  .step { justify-content: flex-start; }
+  .step-line { display: none; }
+}
+
+@media (display-mode: standalone) {
+  .app-shell { padding-top: max(22px, env(safe-area-inset-top)); }
+}
+
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">AV</div>
+        <div>
+          <p class="eyebrow">TARIMSAL BİLGİSAYARLI GÖRÜ</p>
+          <h1>AgriVision Live</h1>
+        </div>
+      </div>
+      <div id="statusPill" class="status-pill is-loading">
+        <span class="status-dot"></span>
+        <span id="statusText">Model hazırlanıyor</span>
+      </div>
+    </header>
+
+    <section class="hero-card">
+      <div id="cameraStage" class="camera-stage">
+        <video id="camera" playsinline muted></video>
+        <canvas id="overlay" aria-label="Tespit sonuçları"></canvas>
+
+        <div id="cameraPlaceholder" class="camera-placeholder">
+          <div class="camera-icon">◎</div>
+          <h2>Canlı tespiti başlatın</h2>
+          <p>Telefon kamerasını sunumdaki videoya yöneltin.</p>
+          <button id="startButton" class="primary-btn" type="button">Kamerayı Başlat</button>
+        </div>
+
+        <div class="live-badge" id="liveBadge" hidden>
+          <span></span> CANLI
+        </div>
+
+        <div class="fps-badge" id="fpsBadge" hidden>
+          <strong id="fpsValue">0.0</strong><small> FPS</small>
+        </div>
+      </div>
+
+      <div class="count-grid" aria-label="Anlık sayım">
+        <article class="count-card ripe">
+          <div class="count-label"><span class="class-dot"></span>Full Ripe</div>
+          <strong id="countRipe">0</strong>
+        </article>
+        <article class="count-card unripe">
+          <div class="count-label"><span class="class-dot"></span>Unripe</div>
+          <strong id="countUnripe">0</strong>
+        </article>
+        <article class="count-card total">
+          <div class="count-label"><span class="class-dot"></span>Toplam</div>
+          <strong id="countTotal">0</strong>
+        </article>
+      </div>
+
+      <div class="controls">
+        <button id="freezeButton" class="control-btn" type="button" disabled>
+          <span class="control-icon">❚❚</span>
+          <span id="freezeText">Tespiti Dondur</span>
+        </button>
+        <button id="switchButton" class="control-btn" type="button" disabled>
+          <span class="control-icon">↻</span>
+          Kamerayı Değiştir
+        </button>
+      </div>
+
+      <div class="threshold-panel">
+        <div class="threshold-head">
+          <label for="confidenceRange">Güven eşiği</label>
+          <output id="confidenceValue" for="confidenceRange">%35</output>
+        </div>
+        <input id="confidenceRange" type="range" min="10" max="90" step="5" value="35" />
+        <div class="threshold-scale"><span>Daha fazla tespit</span><span>Daha seçici</span></div>
+      </div>
+
+      <div id="messageBox" class="message-box" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <section class="how-card">
+      <div class="step"><span>1</span><p>Kamerayı başlat</p></div>
+      <div class="step-line"></div>
+      <div class="step"><span>2</span><p>Videoya yönelt</p></div>
+      <div class="step-line"></div>
+      <div class="step"><span>3</span><p>Tespitleri ve sayımı gör</p></div>
+    </section>
+
+    <footer>
+      Bu uygulama, TÜBİTAK 2237-A “Tarımda Dijital Dönüşüm: Web Tabanlı Yapay Zekâ Uygulamaları Eğitimi” kapsamında Dr. Öğr. Üyesi Tahsin UYGUN tarafından hazırlanmıştır.
+    </footer>
+  </main>
+
+  <canvas id="inputCanvas" width="640" height="640" hidden></canvas>
+  <script>
+'use strict';
+
+const MODEL_URL = './model/model.onnx';
+const INPUT_SIZE = 640;
+const CLASS_NAMES = ['Full Ripe', 'Unripe'];
+const CLASS_COLORS = ['#ff5b62', '#78e08f'];
+const IOU_THRESHOLD = 0.45;
+const MAX_DETECTIONS = 100;
+const MIN_FRAME_GAP_MS = 70;
+
+const els = {
+  camera: document.getElementById('camera'),
+  overlay: document.getElementById('overlay'),
+  inputCanvas: document.getElementById('inputCanvas'),
+  stage: document.getElementById('cameraStage'),
+  placeholder: document.getElementById('cameraPlaceholder'),
+  start: document.getElementById('startButton'),
+  freeze: document.getElementById('freezeButton'),
+  freezeText: document.getElementById('freezeText'),
+  switchCam: document.getElementById('switchButton'),
+  liveBadge: document.getElementById('liveBadge'),
+  fpsBadge: document.getElementById('fpsBadge'),
+  fps: document.getElementById('fpsValue'),
+  statusPill: document.getElementById('statusPill'),
+  statusText: document.getElementById('statusText'),
+  confidence: document.getElementById('confidenceRange'),
+  confidenceValue: document.getElementById('confidenceValue'),
+  countRipe: document.getElementById('countRipe'),
+  countUnripe: document.getElementById('countUnripe'),
+  countTotal: document.getElementById('countTotal'),
+  message: document.getElementById('messageBox')
+};
+
+let session = null;
+let stream = null;
+let running = false;
+let frozen = false;
+let inferenceBusy = false;
+let facingMode = 'environment';
+let lastFrameAt = 0;
+let lastFpsAt = performance.now();
+let frameCounter = 0;
+let confidenceThreshold = Number(els.confidence.value) / 100;
+
+const overlayCtx = els.overlay.getContext('2d');
+const inputCtx = els.inputCanvas.getContext('2d', { willReadFrequently: true });
+
+function setStatus(type, text) {
+  els.statusPill.className = `status-pill is-${type}`;
+  els.statusText.textContent = text;
+}
+
+function showMessage(text) {
+  els.message.textContent = text;
+  els.message.hidden = false;
+}
+
+function hideMessage() {
+  els.message.hidden = true;
+}
+
+async function loadModel() {
+  try {
+    setStatus('loading', 'Model hazırlanıyor');
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
+    ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
+
+    const providers = navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'];
+    try {
+      session = await ort.InferenceSession.create(MODEL_URL, {
+        executionProviders: providers,
+        graphOptimizationLevel: 'all'
+      });
+    } catch (providerError) {
+      session = await ort.InferenceSession.create(MODEL_URL, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all'
+      });
+    }
+
+    setStatus('ready', 'Hazır');
+    return true;
+  } catch (error) {
+    console.error(error);
+    setStatus('error', 'Model yüklenemedi');
+    showMessage('Algılama modeli yüklenemedi. GitHub klasöründe model/model.onnx dosyasının bulunduğunu ve internet bağlantısının açık olduğunu kontrol edin.');
+    return false;
+  }
+}
+
+async function startCamera() {
+  hideMessage();
+  if (!session) {
+    const ok = await loadModel();
+    if (!ok) return;
+  }
+
+  try {
+    stopStream();
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    });
+
+    els.camera.srcObject = stream;
+    await els.camera.play();
+    await waitForVideoDimensions();
+    syncCanvasSize();
+
+    els.placeholder.hidden = true;
+    els.liveBadge.hidden = false;
+    els.fpsBadge.hidden = false;
+    els.freeze.disabled = false;
+    els.switchCam.disabled = false;
+    running = true;
+    frozen = false;
+    els.freezeText.textContent = 'Tespiti Dondur';
+    requestAnimationFrame(inferenceLoop);
+  } catch (error) {
+    console.error(error);
+    showMessage('Kamera açılamadı. Tarayıcı kamera iznini kontrol edin. iPhone/iPad için sayfanın HTTPS üzerinden açılması gerekir.');
+  }
+}
+
+function waitForVideoDimensions() {
+  if (els.camera.videoWidth && els.camera.videoHeight) return Promise.resolve();
+  return new Promise(resolve => {
+    els.camera.addEventListener('loadedmetadata', resolve, { once: true });
+  });
+}
+
+function syncCanvasSize() {
+  const w = els.camera.videoWidth || 1280;
+  const h = els.camera.videoHeight || 720;
+  els.overlay.width = w;
+  els.overlay.height = h;
+  els.stage.style.aspectRatio = `${w} / ${h}`;
+}
+
+function stopStream() {
+  if (!stream) return;
+  stream.getTracks().forEach(track => track.stop());
+  stream = null;
+}
+
+async function switchCamera() {
+  facingMode = facingMode === 'environment' ? 'user' : 'environment';
+  running = false;
+  frozen = false;
+  await startCamera();
+}
+
+function toggleFreeze() {
+  if (!running) return;
+  frozen = !frozen;
+
+  if (frozen) {
+    els.camera.pause();
+    els.freezeText.textContent = 'Tespiti Devam Ettir';
+    els.liveBadge.innerHTML = '<span></span> DONDURULDU';
+  } else {
+    els.camera.play();
+    els.freezeText.textContent = 'Tespiti Dondur';
+    els.liveBadge.innerHTML = '<span></span> CANLI';
+    lastFrameAt = 0;
+    requestAnimationFrame(inferenceLoop);
+  }
+}
+
+async function inferenceLoop(now) {
+  if (!running || frozen) return;
+  if (inferenceBusy || now - lastFrameAt < MIN_FRAME_GAP_MS) {
+    requestAnimationFrame(inferenceLoop);
+    return;
+  }
+
+  lastFrameAt = now;
+  inferenceBusy = true;
+
+  try {
+    const prep = preprocessFrame();
+    const inputName = session.inputNames[0];
+    const feeds = { [inputName]: new ort.Tensor('float32', prep.tensor, [1, 3, INPUT_SIZE, INPUT_SIZE]) };
+    const results = await session.run(feeds);
+    const output = results[session.outputNames[0]];
+    const detections = decodeOutput(output, prep);
+    drawDetections(detections);
+    updateCounts(detections);
+    updateFps();
+  } catch (error) {
+    console.error(error);
+    running = false;
+    setStatus('error', 'İşleme hatası');
+    showMessage('Canlı görüntü işlenirken bir hata oluştu. Model dosyasının bu uygulama için dışa aktarılmış sürüm olduğunu kontrol edin.');
+  } finally {
+    inferenceBusy = false;
+  }
+
+  if (running && !frozen) requestAnimationFrame(inferenceLoop);
+}
+
+function preprocessFrame() {
+  const vw = els.camera.videoWidth;
+  const vh = els.camera.videoHeight;
+  const scale = Math.min(INPUT_SIZE / vw, INPUT_SIZE / vh);
+  const drawW = Math.round(vw * scale);
+  const drawH = Math.round(vh * scale);
+  const padX = Math.floor((INPUT_SIZE - drawW) / 2);
+  const padY = Math.floor((INPUT_SIZE - drawH) / 2);
+
+  inputCtx.fillStyle = 'rgb(114,114,114)';
+  inputCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+  inputCtx.drawImage(els.camera, 0, 0, vw, vh, padX, padY, drawW, drawH);
+
+  const rgba = inputCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
+  const area = INPUT_SIZE * INPUT_SIZE;
+  const tensor = new Float32Array(3 * area);
+
+  for (let i = 0, p = 0; i < rgba.length; i += 4, p++) {
+    tensor[p] = rgba[i] / 255;
+    tensor[area + p] = rgba[i + 1] / 255;
+    tensor[2 * area + p] = rgba[i + 2] / 255;
+  }
+
+  return { tensor, scale, padX, padY, sourceW: vw, sourceH: vh };
+}
+
+function decodeOutput(output, prep) {
+  const dims = output.dims;
+  const data = output.data;
+  if (!dims || dims.length !== 3) throw new Error(`Beklenmeyen çıktı boyutu: ${dims}`);
+
+  const a = dims[1];
+  const b = dims[2];
+  const channelsFirst = a <= 64 && b > a;
+  const channels = channelsFirst ? a : b;
+  const boxes = channelsFirst ? b : a;
+  const classCount = channels - 4;
+
+  if (classCount < 1) throw new Error('Sınıf çıktıları bulunamadı.');
+
+  const candidates = [];
+  const get = channelsFirst
+    ? (box, channel) => data[channel * boxes + box]
+    : (box, channel) => data[box * channels + channel];
+
+  for (let i = 0; i < boxes; i++) {
+    let classId = 0;
+    let score = -Infinity;
+
+    for (let c = 0; c < classCount; c++) {
+      const s = get(i, 4 + c);
+      if (s > score) {
+        score = s;
+        classId = c;
+      }
+    }
+
+    if (score < confidenceThreshold) continue;
+
+    const cx = get(i, 0);
+    const cy = get(i, 1);
+    const w = get(i, 2);
+    const h = get(i, 3);
+
+    let x1 = (cx - w / 2 - prep.padX) / prep.scale;
+    let y1 = (cy - h / 2 - prep.padY) / prep.scale;
+    let x2 = (cx + w / 2 - prep.padX) / prep.scale;
+    let y2 = (cy + h / 2 - prep.padY) / prep.scale;
+
+    x1 = clamp(x1, 0, prep.sourceW);
+    y1 = clamp(y1, 0, prep.sourceH);
+    x2 = clamp(x2, 0, prep.sourceW);
+    y2 = clamp(y2, 0, prep.sourceH);
+
+    if (x2 - x1 < 2 || y2 - y1 < 2) continue;
+    candidates.push({ x1, y1, x2, y2, score, classId });
+  }
+
+  return nonMaximumSuppression(candidates, IOU_THRESHOLD, MAX_DETECTIONS);
+}
+
+function nonMaximumSuppression(boxes, threshold, limit) {
+  boxes.sort((x, y) => y.score - x.score);
+  const kept = [];
+
+  for (const box of boxes) {
+    let suppress = false;
+    for (const selected of kept) {
+      if (selected.classId === box.classId && iou(box, selected) > threshold) {
+        suppress = true;
+        break;
+      }
+    }
+    if (!suppress) {
+      kept.push(box);
+      if (kept.length >= limit) break;
+    }
+  }
+  return kept;
+}
+
+function iou(a, b) {
+  const x1 = Math.max(a.x1, b.x1);
+  const y1 = Math.max(a.y1, b.y1);
+  const x2 = Math.min(a.x2, b.x2);
+  const y2 = Math.min(a.y2, b.y2);
+  const iw = Math.max(0, x2 - x1);
+  const ih = Math.max(0, y2 - y1);
+  const intersection = iw * ih;
+  const areaA = (a.x2 - a.x1) * (a.y2 - a.y1);
+  const areaB = (b.x2 - b.x1) * (b.y2 - b.y1);
+  return intersection / Math.max(areaA + areaB - intersection, 1e-6);
+}
+
+function drawDetections(detections) {
+  overlayCtx.clearRect(0, 0, els.overlay.width, els.overlay.height);
+  const scale = Math.max(1, els.overlay.width / 900);
+
+  for (const d of detections) {
+    const color = CLASS_COLORS[d.classId] || '#80bfff';
+    const label = `${CLASS_NAMES[d.classId] || `Sınıf ${d.classId}`}  ${Math.round(d.score * 100)}%`;
+    const x = d.x1;
+    const y = d.y1;
+    const w = d.x2 - d.x1;
+    const h = d.y2 - d.y1;
+
+    overlayCtx.strokeStyle = color;
+    overlayCtx.lineWidth = Math.max(3, 3 * scale);
+    overlayCtx.strokeRect(x, y, w, h);
+
+    overlayCtx.font = `700 ${Math.max(16, 16 * scale)}px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif`;
+    const metrics = overlayCtx.measureText(label);
+    const labelH = Math.max(26, 26 * scale);
+    const labelW = metrics.width + 16 * scale;
+    const labelY = Math.max(0, y - labelH);
+
+    overlayCtx.fillStyle = color;
+    overlayCtx.fillRect(x, labelY, labelW, labelH);
+    overlayCtx.fillStyle = '#07100c';
+    overlayCtx.textBaseline = 'middle';
+    overlayCtx.fillText(label, x + 8 * scale, labelY + labelH / 2);
+  }
+}
+
+function updateCounts(detections) {
+  let ripe = 0;
+  let unripe = 0;
+  for (const d of detections) {
+    if (d.classId === 0) ripe++;
+    if (d.classId === 1) unripe++;
+  }
+  els.countRipe.textContent = String(ripe);
+  els.countUnripe.textContent = String(unripe);
+  els.countTotal.textContent = String(detections.length);
+}
+
+function updateFps() {
+  frameCounter++;
+  const now = performance.now();
+  const elapsed = now - lastFpsAt;
+  if (elapsed >= 1000) {
+    els.fps.textContent = ((frameCounter * 1000) / elapsed).toFixed(1);
+    frameCounter = 0;
+    lastFpsAt = now;
+  }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+els.start.addEventListener('click', startCamera);
+els.freeze.addEventListener('click', toggleFreeze);
+els.switchCam.addEventListener('click', switchCamera);
+els.confidence.addEventListener('input', () => {
+  confidenceThreshold = Number(els.confidence.value) / 100;
+  els.confidenceValue.value = `%${els.confidence.value}`;
+  els.confidenceValue.textContent = `%${els.confidence.value}`;
+});
+
+window.addEventListener('resize', () => {
+  if (els.camera.videoWidth) syncCanvasSize();
+});
+
+window.addEventListener('pagehide', stopStream);
+
+// Modeli sayfa açılır açılmaz arka planda hazırlar.
+loadModel();
+
+  </script>
+</body>
+</html>
