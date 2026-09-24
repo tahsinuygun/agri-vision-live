@@ -1,4 +1,4 @@
-# AgriVision Live
+# AgriAI Detection Lab
 
 Mobil tarayıcı üzerinden tarımsal görüntülerde canlı nesne tespiti ve anlık sınıf bazlı sayım yapan etkileşimli eğitim uygulaması.
 
