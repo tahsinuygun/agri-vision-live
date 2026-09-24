@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071019">
+<title>SmartFarm Embedded Challenge</title>
+<meta name="description" content="Gömülü sistemler için interaktif akıllı sera challenge uygulaması.">
+<style>
+:root{
+  --bg:#061019;--card:#0c1924;--card2:#102331;--line:rgba(255,255,255,.09);
+  --text:#f5fbff;--muted:#9ab1bf;--cyan:#42d9ff;--blue:#5b8cff;
+  --orange:#ffad4d;--green:#5fe38b;--red:#ff6b78;--yellow:#ffe066
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% -10%,#13324b 0,#081621 38%,#040a10 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{width:min(1040px,100%);margin:auto;padding:12px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin:8px 2px 14px}
+.top h1{font-size:clamp(23px,5vw,36px);line-height:1.02;letter-spacing:-.045em;margin:0 0 7px}
+.top p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.badge{padding:7px 10px;border-radius:999px;border:1px solid rgba(66,217,255,.32);background:rgba(66,217,255,.09);color:#b8f0ff;font-size:10px;font-weight:900;white-space:nowrap}
+.card{background:linear-gradient(180deg,rgba(16,35,49,.97),rgba(9,22,31,.97));border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 54px rgba(0,0,0,.28);overflow:hidden}
+.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:0}
+.greenhouse{position:relative;min-height:390px;border-right:1px solid var(--line);overflow:hidden;background:
+  radial-gradient(circle at 50% 18%,rgba(91,140,255,.15),transparent 32%),
+  linear-gradient(#102536 0 53%,#17231a 53% 100%)}
+.sky{position:absolute;inset:0 0 47% 0;background:linear-gradient(180deg,#102a3c,#17354a);transition:.4s}
+.sun{position:absolute;right:28px;top:30px;width:58px;height:58px;border-radius:50%;background:var(--yellow);box-shadow:0 0 28px rgba(255,224,102,.55);transition:.5s}
+.sun.night{background:#d8e5ff;box-shadow:0 0 24px rgba(216,229,255,.35);transform:scale(.78)}
+.frame{position:absolute;left:7%;right:7%;bottom:16%;height:62%;border:3px solid rgba(190,230,255,.32);border-bottom:0;clip-path:polygon(12% 0,88% 0,100% 19%,100% 100%,0 100%,0 19%);background:linear-gradient(180deg,rgba(160,225,255,.08),rgba(120,220,180,.04))}
+.bed{position:absolute;left:10%;right:10%;bottom:10%;height:22%;border-radius:18px;background:linear-gradient(#4a321e,#281b12);box-shadow:inset 0 12px 22px rgba(0,0,0,.32)}
+.plant{position:absolute;bottom:18%;width:26px;height:70px}
+.plant:before,.plant:after{content:"";position:absolute;background:#5bd77a;border-radius:100% 0 100% 0;width:25px;height:15px}
+.plant:before{left:8px;top:18px;transform:rotate(-28deg)}
+.plant:after{left:-7px;top:35px;transform:rotate(145deg)}
+.stem{position:absolute;left:12px;top:8px;width:4px;height:58px;background:#4ac16a;border-radius:5px}
+.p1{left:22%}.p2{left:42%}.p3{left:62%}.p4{left:78%}
+.sensor{position:absolute;border-radius:12px;padding:8px 10px;background:rgba(4,11,16,.78);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);font-size:11px;font-weight:800;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.sensor b{display:block;font-size:18px;margin-top:2px}
+.tempS{left:22px;top:22px}.soilS{left:22px;bottom:24px}.lightS{right:22px;top:110px}
+.fan{position:absolute;right:14%;top:42%;width:64px;height:64px;border:4px solid #8da5b4;border-radius:50%;display:grid;place-items:center;background:#101a20}
+.blade{position:absolute;width:8px;height:26px;background:#c0d2dd;border-radius:8px;transform-origin:50% 100%;bottom:50%;left:calc(50% - 4px)}
+.blade:nth-child(2){transform:rotate(120deg)}.blade:nth-child(3){transform:rotate(240deg)}
+.fan.on .blade{animation:spinBlade .45s linear infinite}
+@keyframes spinBlade{from{transform:rotate(var(--r,0deg))}to{transform:rotate(calc(var(--r,0deg) + 360deg))}}
+.blade:nth-child(1){--r:0deg}.blade:nth-child(2){--r:120deg}.blade:nth-child(3){--r:240deg}
+.pump{position:absolute;left:13%;bottom:28%;width:48px;height:34px;border-radius:10px;background:#213340;border:2px solid #6aaed1}
+.water{position:absolute;left:18%;bottom:34%;width:10px;height:0;background:linear-gradient(#46cfff,transparent);border-radius:8px;opacity:0;transition:.25s}
+.water.on{height:94px;opacity:.82;animation:pulseWater .7s ease-in-out infinite alternate}
+@keyframes pulseWater{to{filter:brightness(1.4);transform:scaleX(1.25)}}
+.lamp{position:absolute;left:48%;top:24%;width:72px;height:18px;border-radius:20px;background:#2a3942;border:2px solid #8399a7;transition:.25s}
+.lamp.on{background:#ffe786;box-shadow:0 0 28px rgba(255,231,134,.75)}
+.flow{position:absolute;left:0;right:0;bottom:0;height:42px;background:rgba(2,7,10,.86);display:flex;align-items:center;justify-content:center;gap:7px;font-size:10px;color:#b7c8d2}
+.flow b{color:#e8f6ff}.arrow{color:var(--cyan)}
+.panel{padding:14px}
+.mission{padding:12px;border-radius:16px;background:rgba(91,140,255,.08);border:1px solid rgba(91,140,255,.18);margin-bottom:11px}
+.mission .n{font-size:10px;color:#9fc2ff;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.mission h2{font-size:16px;margin:5px 0 5px}.mission p{margin:0;color:#b5c5cf;font-size:12px;line-height:1.45}
+.timer{display:flex;justify-content:space-between;align-items:center;margin:10px 0 12px}
+.timer strong{font-size:24px;letter-spacing:.03em}.score{font-size:12px;color:#b7c7d1}
+.rule{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:16px;padding:12px}
+.ruleTitle{font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:800}
+.rulegrid{display:grid;grid-template-columns:1.25fr .6fr .75fr;gap:7px}
+select,input[type=number]{width:100%;background:#0a1721;color:#edf8ff;border:1px solid rgba(255,255,255,.11);border-radius:11px;padding:10px 9px;font-weight:800;font-size:12px;outline:none}
+.then{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+button{appearance:none;border:0;border-radius:13px;padding:11px 10px;font-weight:900;font-size:12px;cursor:pointer}
+.primary{background:linear-gradient(135deg,var(--cyan),#7ee0ff);color:#04141c}
+.secondary{background:#152b3a;color:#eaf8ff;border:1px solid rgba(255,255,255,.08)}
+.danger{background:rgba(255,107,120,.12);color:#ffc1c6;border:1px solid rgba(255,107,120,.2)}
+.buttons{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:9px}
+.system{margin-top:11px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.device{padding:10px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid var(--line);text-align:center}
+.device small{display:block;color:var(--muted);font-size:10px}.device b{font-size:13px;display:block;margin-top:3px}
+.device.on{border-color:rgba(95,227,139,.4);box-shadow:inset 0 0 0 1px rgba(95,227,139,.12)}
+.device.on b{color:#8ff3ad}
+.message{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(95,227,139,.08);border:1px solid rgba(95,227,139,.2);color:#bdf5cd;font-size:12px;display:none}
+.message.bad{background:rgba(255,107,120,.08);border-color:rgba(255,107,120,.2);color:#ffc0c5}
+.scenarios{margin-top:12px}
+.scenarios h3{font-size:11px;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.08em}
+.scenarioGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.scenario{background:#132634;color:#dfeef7;border:1px solid rgba(255,255,255,.08);padding:9px 6px}
+.scenario.active{border-color:rgba(66,217,255,.42);background:rgba(66,217,255,.09)}
+.footer{text-align:center;color:#899eab;font-size:11px;line-height:1.6;padding:20px 12px 8px}
+.final{display:none;padding:18px;text-align:center}
+.final .big{font-size:44px}.final h2{margin:7px 0;font-size:21px}.final p{margin:0;color:var(--muted);font-size:12px}
+.final .result{font-size:34px;font-weight:950;margin:10px 0;color:#bff0ff}
+@media(max-width:760px){
+  .hero{grid-template-columns:1fr}.greenhouse{min-height:335px;border-right:0;border-bottom:1px solid var(--line)}
+  .scenarioGrid{grid-template-columns:1fr 1fr}.wrap{padding:8px}
+}
+@media(max-width:390px){
+  .rulegrid{grid-template-columns:1fr .55fr .7fr}.system{grid-template-columns:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>SmartFarm<br>Embedded Challenge</h1>
+    <p>Bir tarımsal gömülü sistemi kur, test et ve arızayı bul.</p>
+  </div>
+  <div class="badge">GERÇEK ZAMANLI UYGULAMA</div>
+</header>
+
+<section class="card hero" id="mainCard">
+  <div class="greenhouse">
+    <div class="sky" id="sky"></div>
+    <div class="sun" id="sun"></div>
+    <div class="frame"></div>
+    <div class="bed"></div>
+    <div class="plant p1"><i class="stem"></i></div>
+    <div class="plant p2"><i class="stem"></i></div>
+    <div class="plant p3"><i class="stem"></i></div>
+    <div class="plant p4"><i class="stem"></i></div>
+
+    <div class="sensor tempS">SICAKLIK<b><span id="temp">28</span> °C</b></div>
+    <div class="sensor soilS">TOPRAK NEMİ<b>%<span id="soil">42</span></b></div>
+    <div class="sensor lightS">IŞIK<b>%<span id="light">76</span></b></div>
+
+    <div class="fan" id="fan">
+      <i class="blade"></i><i class="blade"></i><i class="blade"></i>
+    </div>
+    <div class="pump"></div>
+    <div class="water" id="water"></div>
+    <div class="lamp" id="lamp"></div>
+
+    <div class="flow"><b>Sensör</b><span class="arrow">→</span><b>Mikrodenetleyici</b><span class="arrow">→</span><b>Karar</b><span class="arrow">→</span><b>Aktüatör</b></div>
+  </div>
+
+  <div class="panel">
+    <div class="mission">
+      <div class="n" id="missionNo">Görev 1 / 4</div>
+      <h2 id="missionTitle">Kuraklık kontrolü</h2>
+      <p id="missionText">Toprak nemi %30'un altına düştüğünde sulama pompasını otomatik çalıştıracak kuralı oluştur.</p>
+    </div>
+
+    <div class="timer">
+      <strong id="timer">03:00</strong>
+      <span class="score">Puan: <b id="score">0</b> / 1000</span>
+    </div>
+
+    <div class="rule" id="ruleBox">
+      <div class="ruleTitle">KONTROL KURALI</div>
+      <div class="rulegrid">
+        <select id="sensorSel">
+          <option value="soil">Toprak Nemi</option>
+          <option value="temp">Sıcaklık</option>
+          <option value="light">Işık</option>
+        </select>
+        <select id="opSel">
+          <option value="<">&lt;</option>
+          <option value=">">&gt;</option>
+        </select>
+        <input id="threshold" type="number" value="30">
+      </div>
+      <div class="then">
+        <select id="actuatorSel">
+          <option value="pump">Sulama Pompası</option>
+          <option value="fan">Fan</option>
+          <option value="lamp">Aydınlatma</option>
+        </select>
+        <select id="actionSel">
+          <option value="on">AÇ</option>
+          <option value="off">KAPAT</option>
+        </select>
+      </div>
+      <div class="buttons">
+        <button class="primary" id="runBtn">▶ Kuralı Çalıştır</button>
+        <button class="secondary" id="autoBtn">Otomatik Mod</button>
+      </div>
+    </div>
+
+    <div class="system">
+      <div class="device" id="pumpState"><small>POMPA</small><b>KAPALI</b></div>
+      <div class="device" id="fanState"><small>FAN</small><b>KAPALI</b></div>
+      <div class="device" id="lampState"><small>AYDINLATMA</small><b>KAPALI</b></div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="scenarios">
+      <h3>Senaryo Testleri</h3>
+      <div class="scenarioGrid">
+        <button class="scenario" data-sc="dry">Kuraklık</button>
+        <button class="scenario" data-sc="hot">Sıcaklık</button>
+        <button class="scenario" data-sc="night">Gece</button>
+        <button class="scenario" data-sc="fault">Arıza</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card final" id="finalCard">
+  <div class="big">⚡</div>
+  <h2>Gömülü Sistem Tamamlandı</h2>
+  <div class="result"><span id="finalScore">0</span> / 1000</div>
+  <p>Sensör → veri işleme → kontrol kararı → aktüatör zincirini başarıyla tamamladınız.</p>
+  <button class="primary" id="restartBtn" style="margin-top:14px">Yeniden Başlat</button>
+</section>
+
+<footer class="footer">
+Bu uygulama, TÜBİTAK 2237-A “Tarımda Dijital Dönüşüm: Web Tabanlı Yapay Zekâ Uygulamaları Eğitimi” kapsamında Dr. Öğr. Üyesi Tahsin UYGUN tarafından hazırlanmıştır.
+</footer>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const sensors={soil:42,temp:28,light:76};
+const state={pump:false,fan:false,lamp:false};
+let mission=0, score=0, auto=false, seconds=180, timerId=null, faultFound=false;
+
+const missions=[
+  {title:"Kuraklık kontrolü",text:"Toprak nemi %30'un altına düştüğünde sulama pompasını otomatik çalıştıracak kuralı oluştur.",sensor:"soil",op:"<",thr:30,act:"pump",action:"on",scenario:"dry"},
+  {title:"Sıcaklık kontrolü",text:"Sıcaklık 30 °C'nin üzerine çıktığında fanı çalıştıracak kontrol kuralını oluştur.",sensor:"temp",op:">",thr:30,act:"fan",action:"on",scenario:"hot"},
+  {title:"Gece aydınlatması",text:"Işık seviyesi %25'in altına düştüğünde aydınlatmayı devreye al.",sensor:"light",op:"<",thr:25,act:"lamp",action:"on",scenario:"night"},
+  {title:"Sensör arızasını bul",text:"Bir sensör fiziksel olarak mümkün olmayan veri gönderiyor. Hatalı sensörü bulmak için 'Arıza' senaryosunu çalıştır ve doğru sensör kartına dokun.",scenario:"fault"}
+];
+
+function render(){
+  $("soil").textContent=sensors.soil;
+  $("temp").textContent=sensors.temp;
+  $("light").textContent=sensors.light;
+  $("fan").classList.toggle("on",state.fan);
+  $("water").classList.toggle("on",state.pump);
+  $("lamp").classList.toggle("on",state.lamp);
+  ["pump","fan","lamp"].forEach(k=>{
+    const el=$(k+"State");el.classList.toggle("on",state[k]);el.querySelector("b").textContent=state[k]?"AÇIK":"KAPALI";
+  });
+  $("score").textContent=score;
+}
+function msg(t,bad=false){const el=$("message");el.textContent=t;el.classList.toggle("bad",bad);el.style.display="block"}
+function hideMsg(){$("message").style.display="none"}
+function setScenario(sc){
+  document.querySelectorAll(".scenario").forEach(b=>b.classList.toggle("active",b.dataset.sc===sc));
+  if(sc==="dry"){sensors.soil=18;sensors.temp=28;sensors.light=75;$("sun").classList.remove("night")}
+  if(sc==="hot"){sensors.soil=44;sensors.temp=36;sensors.light=88;$("sun").classList.remove("night")}
+  if(sc==="night"){sensors.soil=40;sensors.temp=24;sensors.light=12;$("sun").classList.add("night")}
+  if(sc==="fault"){sensors.soil=39;sensors.temp=29;sensors.light=1034;$("sun").classList.remove("night")}
+  render(); if(auto) evaluateRule(false);
+}
+function currentRule(){
+  return {sensor:$("sensorSel").value,op:$("opSel").value,thr:Number($("threshold").value),act:$("actuatorSel").value,action:$("actionSel").value}
+}
+function condition(r){const v=sensors[r.sensor];return r.op==="<"?v<r.thr:v>r.thr}
+function evaluateRule(fromButton=true){
+  const r=currentRule(), cond=condition(r);
+  if(cond) state[r.act]=r.action==="on";
+  else if(r.action==="on") state[r.act]=false;
+  render();
+  if(fromButton) checkMission(r,cond);
+}
+function checkMission(r,cond){
+  if(mission>=3){msg("Bu görevde kontrol kuralı yerine hatalı sensörü bulmalısınız.",true);return}
+  const m=missions[mission];
+  const exact=r.sensor===m.sensor&&r.op===m.op&&r.thr===m.thr&&r.act===m.act&&r.action===m.action;
+  if(exact&&cond){
+    score+=230;
+    msg("✓ Doğru! Sensör verisi değerlendirildi ve aktüatör tetiklendi.");
+    setTimeout(nextMission,900);
+  }else if(exact&&!cond){
+    msg("Kural doğru; ancak önce ilgili senaryoyu çalıştırarak eşik koşulunu oluşturun.",true);
+  }else{
+    score=Math.max(0,score-20);render();msg("Kural görevi karşılamıyor. Sensör, karşılaştırma, eşik ve aktüatörü tekrar kontrol edin.",true);
+  }
+}
+function loadMission(){
+  const m=missions[mission];
+  $("missionNo").textContent="Görev "+(mission+1)+" / 4";
+  $("missionTitle").textContent=m.title;$("missionText").textContent=m.text;
+  hideMsg();
+  $("ruleBox").style.opacity=mission===3?".45":"1";
+  $("ruleBox").style.pointerEvents=mission===3?"none":"auto";
+  if(mission<3){
+    $("sensorSel").value=m.sensor;$("opSel").value=m.op;$("threshold").value=m.thr;$("actuatorSel").value=m.act;$("actionSel").value=m.action;
+  }
+  setScenario(m.scenario);
+}
+function nextMission(){mission++; if(mission>=4){finish();return} loadMission()}
+function finish(){
+  clearInterval(timerId);
+  score=Math.min(1000,score+Math.max(0,Math.round(seconds/2)));
+  $("finalScore").textContent=score;$("mainCard").style.display="none";$("finalCard").style.display="block";
+}
+function clickSensor(name){
+  if(mission!==3)return;
+  if(name==="light"&&sensors.light>100){
+    faultFound=true;score+=260;render();msg("✓ Işık sensörü fiziksel sınırın dışında veri gönderiyor. Arıza tespit edildi.");
+    setTimeout(()=>{mission++;finish()},900);
+  }else{score=Math.max(0,score-25);render();msg("Bu sensörün değeri fiziksel olarak makul görünüyor.",true)}
+}
+function reset(){
+  mission=0;score=0;auto=false;seconds=180;faultFound=false;
+  Object.assign(state,{pump:false,fan:false,lamp:false});
+  $("mainCard").style.display="grid";$("finalCard").style.display="none";$("autoBtn").textContent="Otomatik Mod";
+  startTimer();loadMission();render();
+}
+function startTimer(){
+  clearInterval(timerId);
+  $("timer").textContent="03:00";
+  timerId=setInterval(()=>{
+    seconds=Math.max(0,seconds-1);
+    const m=String(Math.floor(seconds/60)).padStart(2,"0"),s=String(seconds%60).padStart(2,"0");
+    $("timer").textContent=m+":"+s;
+    if(seconds===0)finish();
+  },1000);
+}
+$("runBtn").addEventListener("click",()=>evaluateRule(true));
+$("autoBtn").addEventListener("click",()=>{auto=!auto;$("autoBtn").textContent=auto?"Otomatik: AÇIK":"Otomatik Mod";msg(auto?"Otomatik kontrol etkin. Senaryolar değiştikçe kural yeniden değerlendirilecek.":"Otomatik kontrol kapatıldı.");if(auto)evaluateRule(false)});
+$("restartBtn").addEventListener("click",reset);
+document.querySelectorAll(".scenario").forEach(b=>b.addEventListener("click",()=>setScenario(b.dataset.sc)));
+document.querySelector(".soilS").addEventListener("click",()=>clickSensor("soil"));
+document.querySelector(".tempS").addEventListener("click",()=>clickSensor("temp"));
+document.querySelector(".lightS").addEventListener("click",()=>clickSensor("light"));
+startTimer();loadMission();render();
+})();
+</script>
+</body>
+</html>
