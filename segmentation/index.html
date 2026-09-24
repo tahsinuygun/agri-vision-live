@@ -9,24 +9,24 @@
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
 <style>
 :root{
-  --bg:#07100c;--card:#0d1a14;--card2:#12241b;--line:rgba(255,255,255,.09);
-  --text:#f6faf7;--muted:#9fb1a6;--accent:#7ee2a8;
+  --bg:#0d0714;--card:#171020;--card2:#21152f;--line:rgba(255,255,255,.10);
+  --text:#faf7ff;--muted:#b8abc6;--accent:#b77cff;
   --head:#ff4fd8;--feed:#56e37a;--mlb:#43d7ff;--danger:#ff7474
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:radial-gradient(circle at 50% -10%,#173829 0,#09150f 34%,#050b08 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100%}
+html,body{margin:0;background:radial-gradient(circle at 50% -10%,#3a1d55 0,#160d22 36%,#09050e 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100%}
 body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 .wrap{width:min(980px,100%);margin:auto;padding:14px}
 .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin:8px 2px 14px}
 .brand h1{font-size:clamp(22px,5vw,34px);line-height:1.05;margin:0 0 7px;letter-spacing:-.04em}
 .brand p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
-.badge{border:1px solid rgba(126,226,168,.32);background:rgba(126,226,168,.09);color:#bdf4d2;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.badge{border:1px solid rgba(183,124,255,.38);background:rgba(183,124,255,.12);color:#e1c8ff;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
 .card{background:linear-gradient(180deg,rgba(18,36,27,.96),rgba(10,22,16,.96));border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:hidden}
 .stage{position:relative;width:100%;aspect-ratio:16/9;background:#020403;overflow:hidden}
 video,.overlay{position:absolute;inset:0;width:100%;height:100%}
 video{object-fit:fill;background:#020403}
 .overlay{pointer-events:none}
-.idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:32px;background:radial-gradient(circle at center,rgba(126,226,168,.08),transparent 58%)}
+.idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:32px;background:radial-gradient(circle at center,rgba(183,124,255,.11),transparent 58%)}
 .idle.hide{display:none}
 .idle .ico{font-size:40px;margin-bottom:12px}
 .idle strong{display:block;font-size:18px}
@@ -55,12 +55,12 @@ button:disabled{opacity:.46;cursor:not-allowed}
 .slider label{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:5px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:10px}
-.status{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(126,226,168,.07);border:1px solid rgba(126,226,168,.16);font-size:12px;color:#c9f2d9}
+.status{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(183,124,255,.08);border:1px solid rgba(183,124,255,.20);font-size:12px;color:#e2ccff}
 .status.error{background:rgba(255,116,116,.07);border-color:rgba(255,116,116,.22);color:#ffb3b3}
 .paper{margin-top:14px;padding:16px}
 .paper h2{font-size:15px;margin:0 0 8px}
 .paper p{font-size:12px;line-height:1.55;color:#c8d5cd;margin:0}
-.paper a{display:inline-block;margin-top:11px;color:#bdf4d2;text-decoration:none;font-size:12px;font-weight:850;border-bottom:1px solid rgba(189,244,210,.4)}
+.paper a{display:inline-block;margin-top:11px;color:#d9b8ff;text-decoration:none;font-size:12px;font-weight:850;border-bottom:1px solid rgba(189,244,210,.4)}
 .footer{text-align:center;color:#8fa097;font-size:11px;line-height:1.6;padding:20px 12px 8px}
 @media(max-width:720px){
   .top{align-items:flex-start}.badge{font-size:9px;padding:6px 8px}
@@ -137,9 +137,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         <button class="secondary" id="maskBtn">Maskeleri Gizle</button>
         <button class="secondary" id="clearBtn">Sonucu Temizle</button>
       </div>
-
-      <div class="note">Alan (%) değeri, o sınıfa ait segmentasyon maskelerinin görünür görüntü alanındaki yaklaşık piksel oranını gösterir. Canlı ders demosunda sonuçlar kamera açısı, projeksiyon parlaklığı ve ekrana olan uzaklıktan etkilenebilir.</div>
-      <div class="status" id="status">Model yükleniyor…</div>
+      <div class="status" id="status" style="display:none">Model yükleniyor…</div>
     </div>
   </section>
 
@@ -208,6 +206,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   function setStatus(msg, err=false){
     els.status.textContent = msg;
     els.status.classList.toggle("error", err);
+    els.status.style.display = err ? "block" : "none";
   }
 
   async function loadModel(){
