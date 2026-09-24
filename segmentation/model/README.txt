@@ -1,0 +1,1 @@
+Bu klasöre dönüştürülmüş segmentasyon modeli "model.onnx" adıyla yüklenmelidir.\n
