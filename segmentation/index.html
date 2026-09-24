@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08110d">
+<title>AgriVision Segmentation Lab</title>
+<meta name="description" content="Tarımsal görüntüler için canlı instance segmentasyon eğitim uygulaması.">
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+<style>
+:root{
+  --bg:#07100c;--card:#0d1a14;--card2:#12241b;--line:rgba(255,255,255,.09);
+  --text:#f6faf7;--muted:#9fb1a6;--accent:#7ee2a8;
+  --head:#ff4fd8;--feed:#56e37a;--mlb:#43d7ff;--danger:#ff7474
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:radial-gradient(circle at 50% -10%,#173829 0,#09150f 34%,#050b08 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100%}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{width:min(980px,100%);margin:auto;padding:14px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin:8px 2px 14px}
+.brand h1{font-size:clamp(22px,5vw,34px);line-height:1.05;margin:0 0 7px;letter-spacing:-.04em}
+.brand p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+.badge{border:1px solid rgba(126,226,168,.32);background:rgba(126,226,168,.09);color:#bdf4d2;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.card{background:linear-gradient(180deg,rgba(18,36,27,.96),rgba(10,22,16,.96));border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:hidden}
+.stage{position:relative;width:100%;aspect-ratio:16/9;background:#020403;overflow:hidden}
+video,.overlay{position:absolute;inset:0;width:100%;height:100%}
+video{object-fit:fill;background:#020403}
+.overlay{pointer-events:none}
+.idle{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:32px;background:radial-gradient(circle at center,rgba(126,226,168,.08),transparent 58%)}
+.idle.hide{display:none}
+.idle .ico{font-size:40px;margin-bottom:12px}
+.idle strong{display:block;font-size:18px}
+.idle span{display:block;margin-top:7px;color:var(--muted);font-size:13px}
+.livebar{position:absolute;left:10px;right:10px;top:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.pill{backdrop-filter:blur(10px);background:rgba(3,8,5,.7);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800}
+.dot{width:7px;height:7px;border-radius:50%;background:#888;display:inline-block;margin-right:6px}
+.dot.ok{background:#61e68e;box-shadow:0 0 12px #61e68e}
+.legend{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(0,0,0,.12)}
+.legend span{display:inline-flex;align-items:center;gap:6px;color:#d9e5de;font-size:12px}
+.sw{width:10px;height:10px;border-radius:3px}
+.panel{padding:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.stat{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:15px;padding:11px;min-width:0}
+.stat .k{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v{font-size:21px;font-weight:900;margin-top:3px}
+.stat .s{font-size:10px;color:var(--muted);margin-top:2px}
+.controls{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:12px}
+.btnrow{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:8px}
+button{appearance:none;border:0;border-radius:14px;padding:12px 11px;font-weight:850;font-size:13px;cursor:pointer}
+button.primary{background:var(--accent);color:#062012}
+button.secondary{background:#182c22;color:#e9f5ed;border:1px solid rgba(255,255,255,.08)}
+button:disabled{opacity:.46;cursor:not-allowed}
+.sliders{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slider{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:14px;padding:9px 10px}
+.slider label{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:5px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:10px}
+.status{margin-top:10px;padding:10px 12px;border-radius:13px;background:rgba(126,226,168,.07);border:1px solid rgba(126,226,168,.16);font-size:12px;color:#c9f2d9}
+.status.error{background:rgba(255,116,116,.07);border-color:rgba(255,116,116,.22);color:#ffb3b3}
+.paper{margin-top:14px;padding:16px}
+.paper h2{font-size:15px;margin:0 0 8px}
+.paper p{font-size:12px;line-height:1.55;color:#c8d5cd;margin:0}
+.paper a{display:inline-block;margin-top:11px;color:#bdf4d2;text-decoration:none;font-size:12px;font-weight:850;border-bottom:1px solid rgba(189,244,210,.4)}
+.footer{text-align:center;color:#8fa097;font-size:11px;line-height:1.6;padding:20px 12px 8px}
+@media(max-width:720px){
+  .top{align-items:flex-start}.badge{font-size:9px;padding:6px 8px}
+  .stats{grid-template-columns:1fr 1fr}
+  .controls{grid-template-columns:1fr}
+  .btnrow{grid-template-columns:1.35fr 1fr 1fr}
+  .panel{padding:11px}.wrap{padding:9px}
+}
+@media(max-width:410px){
+  .btnrow{grid-template-columns:1fr 1fr}.btnrow .primary{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>AgriVision<br>Segmentation Lab</h1>
+      <p>Canlı kamera üzerinde instance segmentasyon ve alan analizi</p>
+    </div>
+    <div class="badge">BarnSeg-ECA-Lite</div>
+  </header>
+
+  <section class="card">
+    <div class="stage" id="stage">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay" class="overlay"></canvas>
+      <div class="idle" id="idle">
+        <div>
+          <div class="ico">◉</div>
+          <strong>Kamerayı başlatın</strong>
+          <span>Projeksiyondaki örnek videoya veya ahır görüntüsüne telefonu doğrultun.</span>
+        </div>
+      </div>
+      <div class="livebar">
+        <div class="pill"><span class="dot" id="dot"></span><span id="liveText">Hazır</span></div>
+        <div class="pill"><span id="fps">0.0</span> FPS</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="sw" style="background:var(--head)"></i>Buffalo Head</span>
+      <span><i class="sw" style="background:var(--feed)"></i>Feed</span>
+      <span><i class="sw" style="background:var(--mlb)"></i>MLB</span>
+    </div>
+
+    <div class="panel">
+      <div class="stats">
+        <div class="stat"><div class="k">Buffalo Head</div><div class="v" id="headCount">0</div><div class="s"><span id="headArea">0.0</span>% alan</div></div>
+        <div class="stat"><div class="k">Feed</div><div class="v" id="feedCount">0</div><div class="s"><span id="feedArea">0.0</span>% alan</div></div>
+        <div class="stat"><div class="k">MLB</div><div class="v" id="mlbCount">0</div><div class="s"><span id="mlbArea">0.0</span>% alan</div></div>
+        <div class="stat"><div class="k">Toplam örnek</div><div class="v" id="totalCount">0</div><div class="s">anlık görüntü</div></div>
+      </div>
+
+      <div class="controls">
+        <div class="btnrow">
+          <button class="primary" id="startBtn">Kamerayı Başlat</button>
+          <button class="secondary" id="freezeBtn" disabled>Dondur</button>
+          <button class="secondary" id="switchBtn" disabled>Kamera ↻</button>
+        </div>
+        <div class="sliders">
+          <div class="slider">
+            <label><span>Güven eşiği</span><b id="confVal">0.45</b></label>
+            <input id="conf" type="range" min="0.20" max="0.85" step="0.05" value="0.45">
+          </div>
+          <div class="slider">
+            <label><span>Maske eşiği</span><b id="maskVal">0.50</b></label>
+            <input id="mask" type="range" min="0.30" max="0.80" step="0.05" value="0.50">
+          </div>
+        </div>
+      </div>
+
+      <div class="btnrow" style="margin-top:8px;grid-template-columns:1fr 1fr">
+        <button class="secondary" id="maskBtn">Maskeleri Gizle</button>
+        <button class="secondary" id="clearBtn">Sonucu Temizle</button>
+      </div>
+
+      <div class="note">Alan (%) değeri, o sınıfa ait segmentasyon maskelerinin görünür görüntü alanındaki yaklaşık piksel oranını gösterir. Canlı ders demosunda sonuçlar kamera açısı, projeksiyon parlaklığı ve ekrana olan uzaklıktan etkilenebilir.</div>
+      <div class="status" id="status">Model yükleniyor…</div>
+    </div>
+  </section>
+
+  <section class="card paper">
+    <h2>Bilimsel kaynak</h2>
+    <p>Uygun, T.; Yılmaz, H.; Çoşlu, M.; Ungureanu, N.; Ünal, İ. (2026). <em>BarnSeg-ECA-Lite: A Lightweight Instance Segmentation Model for Feed, Buffalo Heads, and Mineral Lick Blocks in Buffalo Barn Environments.</em> Agriculture, 16(18), 2004.</p>
+    <a href="https://www.mdpi.com/2077-0472/16/18/2004" target="_blank" rel="noopener">Makaleyi görüntüle ↗</a>
+  </section>
+
+  <footer class="footer">
+    Bu uygulama, TÜBİTAK 2237-A “Tarımda Dijital Dönüşüm: Web Tabanlı Yapay Zekâ Uygulamaları Eğitimi” kapsamında Dr. Öğr. Üyesi Tahsin UYGUN tarafından hazırlanmıştır.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const MODEL_URL = "./model/model.onnx";
+  const INPUT_SIZE = 640;
+  const CLASS_NAMES = ["Buffalo Head","Feed","MLB"];
+  const COLORS = [
+    [255,79,216],
+    [86,227,122],
+    [67,215,255]
+  ];
+
+  const els = {
+    video: document.getElementById("video"),
+    overlay: document.getElementById("overlay"),
+    stage: document.getElementById("stage"),
+    idle: document.getElementById("idle"),
+    status: document.getElementById("status"),
+    dot: document.getElementById("dot"),
+    liveText: document.getElementById("liveText"),
+    fps: document.getElementById("fps"),
+    startBtn: document.getElementById("startBtn"),
+    freezeBtn: document.getElementById("freezeBtn"),
+    switchBtn: document.getElementById("switchBtn"),
+    maskBtn: document.getElementById("maskBtn"),
+    clearBtn: document.getElementById("clearBtn"),
+    conf: document.getElementById("conf"),
+    mask: document.getElementById("mask"),
+    confVal: document.getElementById("confVal"),
+    maskVal: document.getElementById("maskVal"),
+    headCount: document.getElementById("headCount"),
+    feedCount: document.getElementById("feedCount"),
+    mlbCount: document.getElementById("mlbCount"),
+    totalCount: document.getElementById("totalCount"),
+    headArea: document.getElementById("headArea"),
+    feedArea: document.getElementById("feedArea"),
+    mlbArea: document.getElementById("mlbArea")
+  };
+
+  const prep = document.createElement("canvas");
+  prep.width = prep.height = INPUT_SIZE;
+  const pctx = prep.getContext("2d", {willReadFrequently:true});
+  const maskCanvas = document.createElement("canvas");
+  const maskCtx = maskCanvas.getContext("2d");
+
+  let session = null, stream = null, facing = "environment";
+  let frozen = false, showMasks = true, busy = false, loopId = null;
+  let lastTick = performance.now(), fpsSmooth = 0;
+  let lastDraw = null;
+
+  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/";
+
+  function setStatus(msg, err=false){
+    els.status.textContent = msg;
+    els.status.classList.toggle("error", err);
+  }
+
+  async function loadModel(){
+    try{
+      setStatus("Segmentasyon modeli yükleniyor…");
+      try{
+        session = await ort.InferenceSession.create(MODEL_URL, {
+          executionProviders:["webgl","wasm"],
+          graphOptimizationLevel:"all"
+        });
+      }catch(e){
+        session = await ort.InferenceSession.create(MODEL_URL, {
+          executionProviders:["wasm"],
+          graphOptimizationLevel:"all"
+        });
+      }
+      setStatus("Model hazır. Kamerayı başlatabilirsiniz.");
+      els.startBtn.disabled = false;
+    }catch(e){
+      console.error(e);
+      setStatus("Model yüklenemedi. model/model.onnx dosyasını ve internet bağlantısını kontrol edin.", true);
+      els.startBtn.disabled = true;
+    }
+  }
+
+  async function startCamera(){
+    if(!session){ setStatus("Model henüz hazır değil.", true); return; }
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio:false,
+        video:{
+          facingMode:{ideal:facing},
+          width:{ideal:1280},
+          height:{ideal:720}
+        }
+      });
+      els.video.srcObject = stream;
+      await els.video.play();
+      await new Promise(resolve => {
+        if(els.video.videoWidth) return resolve();
+        els.video.onloadedmetadata = () => resolve();
+      });
+      const w = els.video.videoWidth || 1280;
+      const h = els.video.videoHeight || 720;
+      els.stage.style.aspectRatio = w + " / " + h;
+      els.overlay.width = w;
+      els.overlay.height = h;
+      els.idle.classList.add("hide");
+      els.dot.classList.add("ok");
+      els.liveText.textContent = "Canlı";
+      els.startBtn.textContent = "Kamerayı Yenile";
+      els.freezeBtn.disabled = false;
+      els.switchBtn.disabled = false;
+      frozen = false;
+      els.freezeBtn.textContent = "Dondur";
+      setStatus("Canlı segmentasyon çalışıyor.");
+      if(!loopId) loop();
+    }catch(e){
+      console.error(e);
+      setStatus("Kamera açılamadı. Tarayıcı kamera iznini kontrol edin.", true);
+    }
+  }
+
+  async function switchCamera(){
+    facing = facing === "environment" ? "user" : "environment";
+    await startCamera();
+  }
+
+  function sigmoid(x){
+    if(x >= 0) return 1/(1+Math.exp(-x));
+    const ex = Math.exp(x); return ex/(1+ex);
+  }
+
+  function iou(a,b){
+    const x1=Math.max(a.x1,b.x1), y1=Math.max(a.y1,b.y1);
+    const x2=Math.min(a.x2,b.x2), y2=Math.min(a.y2,b.y2);
+    const iw=Math.max(0,x2-x1), ih=Math.max(0,y2-y1);
+    const inter=iw*ih;
+    const aa=Math.max(0,a.x2-a.x1)*Math.max(0,a.y2-a.y1);
+    const bb=Math.max(0,b.x2-b.x1)*Math.max(0,b.y2-b.y1);
+    return inter/(aa+bb-inter+1e-6);
+  }
+
+  function nms(items, threshold=.45, maxDet=18){
+    items.sort((a,b)=>b.score-a.score);
+    const keep=[];
+    for(const d of items){
+      let ok=true;
+      for(const k of keep){
+        if(d.cls===k.cls && iou(d,k)>threshold){ok=false;break;}
+      }
+      if(ok){
+        keep.push(d);
+        if(keep.length>=maxDet) break;
+      }
+    }
+    return keep;
+  }
+
+  function preprocess(){
+    const vw=els.video.videoWidth, vh=els.video.videoHeight;
+    const scale=Math.min(INPUT_SIZE/vw,INPUT_SIZE/vh);
+    const nw=Math.round(vw*scale), nh=Math.round(vh*scale);
+    const padX=(INPUT_SIZE-nw)/2, padY=(INPUT_SIZE-nh)/2;
+
+    pctx.fillStyle="#000";
+    pctx.fillRect(0,0,INPUT_SIZE,INPUT_SIZE);
+    pctx.drawImage(els.video,0,0,vw,vh,padX,padY,nw,nh);
+    const rgba=pctx.getImageData(0,0,INPUT_SIZE,INPUT_SIZE).data;
+    const plane=INPUT_SIZE*INPUT_SIZE;
+    const data=new Float32Array(plane*3);
+    for(let i=0,j=0;i<rgba.length;i+=4,j++){
+      data[j]=rgba[i]/255;
+      data[plane+j]=rgba[i+1]/255;
+      data[2*plane+j]=rgba[i+2]/255;
+    }
+    return {tensor:new ort.Tensor("float32",data,[1,3,INPUT_SIZE,INPUT_SIZE]),scale,padX,padY,vw,vh};
+  }
+
+  function tensorGet3(t, f, i, featureFirst){
+    const d=t.data;
+    const dims=t.dims;
+    if(featureFirst){
+      const N=dims[2];
+      return d[f*N+i];
+    }else{
+      const F=dims[2];
+      return d[i*F+f];
+    }
+  }
+
+  function decode(det, proto, confThr){
+    const pd=proto.dims;
+    if(pd.length!==4) throw new Error("Maske prototip çıktısı beklenen yapıda değil.");
+    const maskC=pd[1], ph=pd[2], pw=pd[3];
+    const expectedF=4+CLASS_NAMES.length+maskC;
+    const dd=det.dims;
+    if(dd.length!==3) throw new Error("Tespit çıktısı beklenen yapıda değil.");
+
+    let featureFirst, N, F;
+    if(dd[1]===expectedF){featureFirst=true;F=dd[1];N=dd[2];}
+    else if(dd[2]===expectedF){featureFirst=false;N=dd[1];F=dd[2];}
+    else{
+      featureFirst = dd[1] < dd[2];
+      F = featureFirst ? dd[1] : dd[2];
+      N = featureFirst ? dd[2] : dd[1];
+    }
+
+    const out=[];
+    for(let i=0;i<N;i++){
+      let best=-1, cls=-1;
+      for(let c=0;c<CLASS_NAMES.length;c++){
+        const s=tensorGet3(det,4+c,i,featureFirst);
+        if(s>best){best=s;cls=c;}
+      }
+      if(best<confThr) continue;
+
+      const cx=tensorGet3(det,0,i,featureFirst);
+      const cy=tensorGet3(det,1,i,featureFirst);
+      const w=tensorGet3(det,2,i,featureFirst);
+      const h=tensorGet3(det,3,i,featureFirst);
+      const x1=Math.max(0,cx-w/2), y1=Math.max(0,cy-h/2);
+      const x2=Math.min(INPUT_SIZE,cx+w/2), y2=Math.min(INPUT_SIZE,cy+h/2);
+      if(x2<=x1||y2<=y1) continue;
+
+      const coeff=new Float32Array(maskC);
+      for(let k=0;k<maskC;k++) coeff[k]=tensorGet3(det,4+CLASS_NAMES.length+k,i,featureFirst);
+      out.push({x1,y1,x2,y2,score:best,cls,coeff});
+    }
+    return {detections:nms(out),ph,pw,maskC};
+  }
+
+  function render(result, prepInfo, proto, maskThreshold){
+    const {detections,ph,pw,maskC}=result;
+    const {scale,padX,padY,vw,vh}=prepInfo;
+    const ctx=els.overlay.getContext("2d");
+    if(els.overlay.width!==vw||els.overlay.height!==vh){
+      els.overlay.width=vw;els.overlay.height=vh;
+    }
+    ctx.clearRect(0,0,vw,vh);
+
+    const counts=[0,0,0];
+    const unions=[
+      new Uint8Array(ph*pw),
+      new Uint8Array(ph*pw),
+      new Uint8Array(ph*pw)
+    ];
+
+    maskCanvas.width=pw; maskCanvas.height=ph;
+    const img=maskCtx.createImageData(pw,ph);
+    const pix=img.data;
+    const protoData=proto.data;
+
+    const validX0=Math.max(0,Math.floor(padX/INPUT_SIZE*pw));
+    const validY0=Math.max(0,Math.floor(padY/INPUT_SIZE*ph));
+    const validX1=Math.min(pw,Math.ceil((INPUT_SIZE-padX)/INPUT_SIZE*pw));
+    const validY1=Math.min(ph,Math.ceil((INPUT_SIZE-padY)/INPUT_SIZE*ph));
+
+    for(const d of detections){
+      counts[d.cls]++;
+      const c=COLORS[d.cls];
+      const bx0=Math.max(validX0,Math.floor(d.x1/INPUT_SIZE*pw));
+      const by0=Math.max(validY0,Math.floor(d.y1/INPUT_SIZE*ph));
+      const bx1=Math.min(validX1,Math.ceil(d.x2/INPUT_SIZE*pw));
+      const by1=Math.min(validY1,Math.ceil(d.y2/INPUT_SIZE*ph));
+
+      if(showMasks){
+        for(let py=by0;py<by1;py++){
+          for(let px=bx0;px<bx1;px++){
+            const q=py*pw+px;
+            let logit=0;
+            for(let k=0;k<maskC;k++) logit += d.coeff[k]*protoData[k*ph*pw+q];
+            if(sigmoid(logit)>=maskThreshold){
+              const j=q*4;
+              pix[j]=c[0];pix[j+1]=c[1];pix[j+2]=c[2];pix[j+3]=118;
+              unions[d.cls][q]=1;
+            }
+          }
+        }
+      }else{
+        for(let py=by0;py<by1;py++){
+          for(let px=bx0;px<bx1;px++){
+            const q=py*pw+px;
+            let logit=0;
+            for(let k=0;k<maskC;k++) logit += d.coeff[k]*protoData[k*ph*pw+q];
+            if(sigmoid(logit)>=maskThreshold) unions[d.cls][q]=1;
+          }
+        }
+      }
+    }
+
+    if(showMasks){
+      maskCtx.putImageData(img,0,0);
+      const sx=padX/INPUT_SIZE*pw, sy=padY/INPUT_SIZE*ph;
+      const sw=vw*scale/INPUT_SIZE*pw, sh=vh*scale/INPUT_SIZE*ph;
+      ctx.drawImage(maskCanvas,sx,sy,sw,sh,0,0,vw,vh);
+    }
+
+    ctx.lineWidth=Math.max(2,vw/500);
+    ctx.font=Math.max(13,Math.round(vw/65))+"px system-ui";
+    ctx.textBaseline="top";
+
+    for(const d of detections){
+      const c=COLORS[d.cls];
+      const x1=Math.max(0,(d.x1-padX)/scale);
+      const y1=Math.max(0,(d.y1-padY)/scale);
+      const x2=Math.min(vw,(d.x2-padX)/scale);
+      const y2=Math.min(vh,(d.y2-padY)/scale);
+      if(x2<=x1||y2<=y1) continue;
+      ctx.strokeStyle="rgb("+c.join(",")+")";
+      ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+      const label=CLASS_NAMES[d.cls]+" "+Math.round(d.score*100)+"%";
+      const tw=ctx.measureText(label).width+12;
+      const th=Math.max(21,Math.round(vw/48));
+      ctx.fillStyle="rgba("+c.join(",")+",.92)";
+      ctx.fillRect(x1,Math.max(0,y1-th),tw,th);
+      ctx.fillStyle="#07100c";
+      ctx.fillText(label,x1+6,Math.max(1,y1-th+3));
+    }
+
+    const validArea=Math.max(1,(validX1-validX0)*(validY1-validY0));
+    const areas=unions.map(u=>{
+      let n=0;
+      for(let y=validY0;y<validY1;y++){
+        const row=y*pw;
+        for(let x=validX0;x<validX1;x++) n+=u[row+x];
+      }
+      return n/validArea*100;
+    });
+
+    els.headCount.textContent=counts[0];
+    els.feedCount.textContent=counts[1];
+    els.mlbCount.textContent=counts[2];
+    els.totalCount.textContent=counts.reduce((a,b)=>a+b,0);
+    els.headArea.textContent=areas[0].toFixed(1);
+    els.feedArea.textContent=areas[1].toFixed(1);
+    els.mlbArea.textContent=areas[2].toFixed(1);
+
+    lastDraw={detections,counts,areas};
+  }
+
+  function clearResult(){
+    els.overlay.getContext("2d").clearRect(0,0,els.overlay.width,els.overlay.height);
+    ["headCount","feedCount","mlbCount","totalCount"].forEach(k=>els[k].textContent="0");
+    ["headArea","feedArea","mlbArea"].forEach(k=>els[k].textContent="0.0");
+    lastDraw=null;
+  }
+
+  async function infer(){
+    if(busy||frozen||!session||!stream||els.video.readyState<2) return;
+    busy=true;
+    const t0=performance.now();
+    try{
+      const prepInfo=preprocess();
+      const inputName=session.inputNames[0];
+      const output=await session.run({[inputName]:prepInfo.tensor});
+      const tensors=Object.values(output);
+      const proto=tensors.find(t=>t.dims&&t.dims.length===4);
+      const det=tensors.find(t=>t.dims&&t.dims.length===3);
+      if(!proto||!det) throw new Error("Gerekli segmentasyon çıktıları bulunamadı.");
+      const decoded=decode(det,proto,Number(els.conf.value));
+      render(decoded,prepInfo,proto,Number(els.mask.value));
+      const dt=performance.now()-t0;
+      const inst=1000/Math.max(dt,1);
+      fpsSmooth=fpsSmooth?fpsSmooth*.72+inst*.28:inst;
+      els.fps.textContent=fpsSmooth.toFixed(1);
+    }catch(e){
+      console.error(e);
+      setStatus("Çıkarım sırasında hata oluştu: "+e.message,true);
+    }finally{
+      busy=false;
+    }
+  }
+
+  function loop(){
+    loopId=requestAnimationFrame(loop);
+    const now=performance.now();
+    if(now-lastTick>160){
+      lastTick=now;
+      infer();
+    }
+  }
+
+  els.startBtn.addEventListener("click",startCamera);
+  els.switchBtn.addEventListener("click",switchCamera);
+  els.freezeBtn.addEventListener("click",()=>{
+    frozen=!frozen;
+    els.freezeBtn.textContent=frozen?"Devam Ettir":"Dondur";
+    els.liveText.textContent=frozen?"Donduruldu":"Canlı";
+    els.dot.classList.toggle("ok",!frozen);
+  });
+  els.maskBtn.addEventListener("click",()=>{
+    showMasks=!showMasks;
+    els.maskBtn.textContent=showMasks?"Maskeleri Gizle":"Maskeleri Göster";
+    if(!showMasks && frozen){
+      clearResult();
+      setStatus("Dondurulmuş sonuç temizlendi. Devam ettirerek yeniden analiz edin.");
+    }
+  });
+  els.clearBtn.addEventListener("click",clearResult);
+  els.conf.addEventListener("input",()=>els.confVal.textContent=Number(els.conf.value).toFixed(2));
+  els.mask.addEventListener("input",()=>els.maskVal.textContent=Number(els.mask.value).toFixed(2));
+  window.addEventListener("beforeunload",()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
+
+  loadModel();
+})();
+</script>
+</body>
+</html>
