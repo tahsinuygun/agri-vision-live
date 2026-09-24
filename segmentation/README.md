@@ -1,4 +1,4 @@
-# AgriVision Segmentation Lab
+# AgriAI Segmentation Lab
 
 BarnSeg-ECA-Lite ile canlı kamera tabanlı instance segmentasyon eğitim uygulaması.
 
